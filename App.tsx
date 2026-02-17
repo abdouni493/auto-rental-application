@@ -74,6 +74,25 @@ const App: React.FC = () => {
     setUser(null);
   };
 
+  // Refresh functions to reload data after CRUD operations
+  const refreshData = async () => {
+    try {
+      const [vehiclesData, inspectionsData, damagesData, customersData] = await Promise.all([
+        supabaseService.getVehicles(),
+        supabaseService.getInspections(),
+        supabaseService.getDamages(),
+        supabaseService.getCustomers()
+      ]);
+      
+      setVehicles(vehiclesData);
+      setInspections(inspectionsData);
+      setDamages(damagesData);
+      setCustomers(customersData);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    }
+  };
+
   if (!user) {
     return <LoginPage onLogin={handleLogin} lang={lang} onLanguageToggle={setLang} />;
   }

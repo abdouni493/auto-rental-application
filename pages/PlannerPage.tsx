@@ -231,7 +231,7 @@ const PlannerPage: React.FC<PlannerPageProps> = ({ lang, customers, onAddCustome
     });
   }, [reservations, searchQuery, filterStatus, customers]);
 
-  const handleSaveRes = () => {
+  const handleSaveRes = async () => {
     const resData: Reservation = {
       id: editingId || Math.random().toString(36).substr(2, 9),
       reservationNumber: editingId ? (reservations.find(r => r.id === editingId)?.reservationNumber || '') : `RES-${Date.now().toString().slice(-4)}`,
@@ -252,12 +252,21 @@ const PlannerPage: React.FC<PlannerPageProps> = ({ lang, customers, onAddCustome
       activationLog: reservations.find(r => r.id === editingId)?.activationLog
     };
 
-    if (editingId) {
-      setReservations(reservations.map(r => r.id === editingId ? resData : r));
-    } else {
-      setReservations([resData, ...reservations]);
+    try {
+      if (editingId) {
+        // Update existing reservation in Supabase
+        await dataService.updateReservation(editingId, resData);
+        setReservations(reservations.map(r => r.id === editingId ? resData : r));
+      } else {
+        // Create new reservation in Supabase
+        const createdRes = await dataService.createReservation(resData);
+        setReservations([createdRes, ...reservations]);
+      }
+      resetForm();
+    } catch (error) {
+      console.error('Error saving reservation:', error);
+      alert('Error saving reservation. Please try again.');
     }
-    resetForm();
   };
 
   const resetForm = () => {
@@ -286,7 +295,7 @@ const PlannerPage: React.FC<PlannerPageProps> = ({ lang, customers, onAddCustome
     setIsCreating(true);
   };
 
-  const handleActivate = () => {
+  const handleActivate = async () => {
     if (!selectedRes) return;
     const log: LocationLog = {
       mileage: logData.mileage || 0,
@@ -295,43 +304,70 @@ const PlannerPage: React.FC<PlannerPageProps> = ({ lang, customers, onAddCustome
       date: new Date().toISOString(),
       notes: logData.notes
     };
-    setReservations(prev => prev.map(r => r.id === selectedRes.id ? { ...r, status: 'en cours', activationLog: log } : r));
-    setActiveModal(null);
+    try {
+      await dataService.updateReservation(selectedRes.id, { ...selectedRes, status: 'en cours', activationLog: log });
+      setReservations(prev => prev.map(r => r.id === selectedRes.id ? { ...r, status: 'en cours', activationLog: log } : r));
+      setActiveModal(null);
+    } catch (error) {
+      console.error('Error activating reservation:', error);
+      alert('Error activating reservation. Please try again.');
+    }
   };
 
-  const handleTerminate = () => {
+  const handleTerminate = async () => {
     if (!selectedRes) return;
     const extraTotal = termData.extraKmCost + termData.extraFuelCost;
     const finalInvoiceTotal = selectedRes.totalAmount + (termData.withTva ? extraTotal * 1.19 : extraTotal);
     
-    setReservations(prev => prev.map(r => r.id === selectedRes.id ? { 
-      ...r, 
-      status: 'terminer', 
-      totalAmount: finalInvoiceTotal,
-      terminationLog: {
-        mileage: termData.mileage,
-        fuel: termData.fuel,
-        location: termData.location,
-        date: termData.date,
-        notes: termData.notes
-      }
-    } : r));
-    setActiveModal(null);
+    try {
+      const updatedRes = {
+        ...selectedRes, 
+        status: 'terminer' as ReservationStatus, 
+        totalAmount: finalInvoiceTotal,
+        terminationLog: {
+          mileage: termData.mileage,
+          fuel: termData.fuel,
+          location: termData.location,
+          date: termData.date,
+          notes: termData.notes
+        }
+      };
+      await dataService.updateReservation(selectedRes.id, updatedRes);
+      setReservations(prev => prev.map(r => r.id === selectedRes.id ? updatedRes : r));
+      setActiveModal(null);
+    } catch (error) {
+      console.error('Error terminating reservation:', error);
+      alert('Error terminating reservation. Please try again.');
+    }
   };
 
-  const handleProcessPayment = () => {
+  const handleProcessPayment = async () => {
     if (!selectedRes || paymentAmount <= 0) return;
-    setReservations(prev => prev.map(r => 
-      r.id === selectedRes.id ? { ...r, paidAmount: r.paidAmount + paymentAmount } : r
-    ));
-    setPaymentAmount(0);
-    setActiveModal(null);
+    try {
+      const newPaidAmount = selectedRes.paidAmount + paymentAmount;
+      await dataService.updateReservation(selectedRes.id, { ...selectedRes, paidAmount: newPaidAmount });
+      setReservations(prev => prev.map(r => 
+        r.id === selectedRes.id ? { ...r, paidAmount: newPaidAmount } : r
+      ));
+      setPaymentAmount(0);
+      setActiveModal(null);
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      alert('Error processing payment. Please try again.');
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selectedRes) return;
-    setReservations(prev => prev.filter(r => r.id !== selectedRes.id));
-    setActiveModal(null);
+    if (!confirm('Are you sure you want to delete this reservation?')) return;
+    try {
+      await dataService.deleteReservation(selectedRes.id);
+      setReservations(prev => prev.filter(r => r.id !== selectedRes.id));
+      setActiveModal(null);
+    } catch (error) {
+      console.error('Error deleting reservation:', error);
+      alert('Error deleting reservation. Please try again.');
+    }
   };
 
   const replaceVariables = (content: string, res: Reservation) => {

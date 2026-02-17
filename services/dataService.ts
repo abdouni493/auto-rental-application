@@ -412,6 +412,9 @@ export const updateReservation = async (id: string, updates: Partial<Reservation
   if (updates.status) updateData.status = updates.status;
   if (updates.paidAmount !== undefined) updateData.paid_amount = updates.paidAmount;
   if (updates.discount !== undefined) updateData.discount = updates.discount;
+  if (updates.totalAmount !== undefined) updateData.total_amount = updates.totalAmount;
+  if (updates.activationLog) updateData.activation_log = updates.activationLog;
+  if (updates.terminationLog) updateData.termination_log = updates.terminationLog;
 
   const { data, error } = await supabase
     .from('reservations')
@@ -421,6 +424,11 @@ export const updateReservation = async (id: string, updates: Partial<Reservation
     .single();
   if (error) throw error;
   return formatReservation(data);
+};
+
+export const deleteReservation = async (id: string): Promise<void> => {
+  const { error } = await supabase.from('reservations').delete().eq('id', id);
+  if (error) throw error;
 };
 
 // =====================================================
