@@ -130,30 +130,32 @@ const AgenciesPage: React.FC<AgenciesPageProps> = ({ lang }) => {
     setEditingAgency(null);
   };
 
-  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSave = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const name = formData.get('name') as string;
     const address = formData.get('address') as string;
     const phone = formData.get('phone') as string;
 
-    if (editingAgency) {
-      setAgencies(prev => prev.map(a => a.id === editingAgency.id ? { ...a, name, address, phone } : a));
-    } else {
-      const newAgency: Agency = {
-        id: Math.random().toString(36).substr(2, 9),
-        name,
-        address,
-        phone
-      };
-      setAgencies(prev => [...prev, newAgency]);
-    }
-    handleCloseForm();
-  };
+    try {
+      setIsLoading(true);
+      setError(null);
 
-  const handleDelete = (id: string) => {
-    setAgencies(prev => prev.filter(a => a.id !== id));
-    setActiveModal({ type: null, agency: null });
+      if (editingAgency) {
+        const updated = await dataService.updateAgency(editingAgency.id, { name, address, phone });
+        setAgencies(prev => prev.map(a => a.id === editingAgency.id ? updated : a));
+      } else {
+        const created = await dataService.createAgency({ name, address, phone });
+        setAgencies(prev => [created, ...prev]);
+      }
+
+      handleCloseForm();
+    } catch (err) {
+      console.error('Error saving agency:', err);
+      setError(lang === 'fr' ? 'Erreur lors de l\'enregistrement' : 'خطأ في الحفظ');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const filteredAgencies = agencies.filter(a => 
@@ -240,6 +242,17 @@ const AgenciesPage: React.FC<AgenciesPageProps> = ({ lang }) => {
     );
   }
 
+  if (isLoading && agencies.length === 0) {
+    return (
+      <div className={`p-8 flex items-center justify-center min-h-[60vh] ${isRtl ? 'font-arabic text-right' : ''}`}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-6"></div>
+          <p className="text-gray-600 font-bold text-lg">{lang === 'fr' ? 'Chargement des agences...' : 'جاري تحميل الوكالات...'}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`p-4 md:p-8 ${isRtl ? 'font-arabic text-right' : ''}`}>
       {/* Header */}
@@ -268,6 +281,13 @@ const AgenciesPage: React.FC<AgenciesPageProps> = ({ lang }) => {
           </GradientButton>
         </div>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-8 p-6 bg-red-50 border-2 border-red-200 rounded-[2.5rem]">
+          <p className="text-red-800 font-bold text-lg">{error}</p>
+        </div>
+      )}
 
       {/* Agencies Grid */}
       {filteredAgencies.length > 0 ? (
@@ -302,7 +322,7 @@ const AgenciesPage: React.FC<AgenciesPageProps> = ({ lang }) => {
 
                 <div className="flex gap-4">
                   <button onClick={() => handleOpenForm(agency)} className="flex-1 py-4.5 bg-gray-50 hover:bg-blue-600 hover:text-white rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all flex items-center justify-center gap-3 active:scale-95">✏️ {currentT.edit}</button>
-                  <button onClick={() => setActiveModal({ type: 'delete', agency })} className="flex-1 py-4.5 bg-gray-50 hover:bg-red-600 hover:text-white rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all flex items-center justify-center gap-3 active:scale-95">🗑️ {currentT.delete}</button>
+                  <button onClick={() => handleDeleteAgency(agency)} className="flex-1 py-4.5 bg-gray-50 hover:bg-red-600 hover:text-white rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all flex items-center justify-center gap-3 active:scale-95">🗑️ {currentT.delete}</button>
                 </div>
               </div>
             </div>
