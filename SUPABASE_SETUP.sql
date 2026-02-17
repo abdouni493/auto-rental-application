@@ -428,10 +428,16 @@ CREATE POLICY "Enable read access for all users" ON agencies FOR SELECT USING (t
 CREATE POLICY "Enable read access for all users" ON customers FOR SELECT USING (true);
 CREATE POLICY "Enable read access for all users" ON vehicles FOR SELECT USING (true);
 CREATE POLICY "Enable read access for all users" ON workers FOR SELECT USING (true);
+CREATE POLICY "Enable write access for public auto-registration" ON workers FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable update access for all users" ON workers FOR UPDATE USING (true) WITH CHECK (true);
 CREATE POLICY "Enable read access for all users" ON rental_options FOR SELECT USING (true);
+CREATE POLICY "Enable write access for rental options" ON rental_options FOR INSERT WITH CHECK (true);
 CREATE POLICY "Enable read access for all users" ON reservations FOR SELECT USING (true);
+CREATE POLICY "Enable write access for reservations" ON reservations FOR INSERT WITH CHECK (true);
 CREATE POLICY "Enable read access for all users" ON inspections FOR SELECT USING (true);
+CREATE POLICY "Enable write access for inspections" ON inspections FOR INSERT WITH CHECK (true);
 CREATE POLICY "Enable read access for all users" ON damages FOR SELECT USING (true);
+CREATE POLICY "Enable write access for damages" ON damages FOR INSERT WITH CHECK (true);
 CREATE POLICY "Enable read access for all users" ON templates FOR SELECT USING (true);
 
 -- =====================================================

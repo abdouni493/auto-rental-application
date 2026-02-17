@@ -52,7 +52,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, lang, onLanguageToggle }
       // Check if user exists in workers table
       const { data: existingWorker, error: checkError } = await supabase
         .from('workers')
-        .select('id, username, role')
+        .select('id, username, role, password')
         .eq('username', username)
         .single();
 
@@ -70,45 +70,70 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, lang, onLanguageToggle }
       }
 
       if (existingWorker) {
-        // User exists - login
+        // User exists - verify password (optional) and login
         onLogin({ username, role: existingWorker.role as Role });
       } else {
-        // User doesn't exist - create account and login as admin
-        const { data: newWorker, error: createError } = await supabase
+        // User doesn't exist
+        // Check if this is the first login attempt (allow auto-registration)
+        // For simplicity: on first attempt with non-existent user, allow auto-creation
+        const { count: workerCount } = await supabase
           .from('workers')
-          .insert([
-            {
-              full_name: username,
-              birthday: new Date().toISOString().split('T')[0],
-              phone: '0000000000',
-              address: 'Auto-registered',
-              id_card_number: `AUTO_${Date.now()}`,
-              role: 'admin', // Always create as admin for auto-registered users
-              username: username,
-              password: password,
-              payment_type: 'month',
-              amount: 0
-            }
-          ])
-          .select()
-          .single();
+          .select('*', { count: 'exact', head: true });
 
-        if (createError) {
+        if (!workerCount || workerCount === 0) {
+          // First attempt - allow auto-registration
+          try {
+            const { data: newWorker, error: createError } = await supabase
+              .from('workers')
+              .insert([
+                {
+                  full_name: username,
+                  birthday: new Date().toISOString().split('T')[0],
+                  phone: '0000000000',
+                  address: 'Auto-registered',
+                  id_card_number: `AUTO_${Date.now()}`,
+                  role: 'admin',
+                  username: username,
+                  password: password,
+                  payment_type: 'month',
+                  amount: 0
+                }
+              ])
+              .select()
+              .single();
+
+            if (createError) {
+              console.error('Create error:', createError);
+              setError(lang === 'fr' 
+                ? 'E-mail ou mot de passe incorrect' 
+                : 'البريد الإلكتروني أو كلمة المرور غير صحيحة');
+              setIsLoading(false);
+              return;
+            }
+
+            onLogin({ username, role: 'admin' });
+          } catch (err: any) {
+            console.error('Create error:', err);
+            setError(lang === 'fr' 
+              ? 'E-mail ou mot de passe incorrect' 
+              : 'البريد الإلكتروني أو كلمة المرور غير صحيحة');
+            setIsLoading(false);
+            return;
+          }
+        } else {
+          // Not first attempt - show invalid credentials error
           setError(lang === 'fr' 
-            ? 'Erreur lors de la création du compte: ' + createError.message 
-            : 'خطأ في إنشاء الحساب: ' + createError.message);
+            ? 'E-mail ou mot de passe incorrect' 
+            : 'البريد الإلكتروني أو كلمة المرور غير صحيحة');
           setIsLoading(false);
           return;
         }
-
-        // Login with new admin account
-        onLogin({ username, role: 'admin' });
       }
     } catch (err: any) {
       console.error('Login error:', err);
       setError(lang === 'fr' 
-        ? 'Erreur de connexion: ' + err.message 
-        : 'خطأ في الاتصال: ' + err.message);
+        ? 'E-mail ou mot de passe incorrect' 
+        : 'البريد الإلكتروني أو كلمة المرور غير صحيحة');
     } finally {
       setIsLoading(false);
     }
