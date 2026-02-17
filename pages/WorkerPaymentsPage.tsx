@@ -1,7 +1,7 @@
 
 import React, { useMemo } from 'react';
 import { Language, User, Worker } from '../types';
-import { MOCK_WORKERS } from '../constants';
+import { TRANSLATIONS } from '../constants';
 import GradientButton from '../components/GradientButton';
 
 interface WorkerPaymentsPageProps {

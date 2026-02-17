@@ -1,7 +1,7 @@
 
 import React, { useMemo } from 'react';
 import { Language, Vehicle, Customer, Reservation, User, Worker } from '../types';
-import { MOCK_VEHICLES, MOCK_CUSTOMERS, MOCK_RESERVATIONS, MOCK_EXPENSES, MOCK_AGENCIES, MOCK_INSPECTIONS, MOCK_WORKERS } from '../constants';
+import { TRANSLATIONS } from '../constants';
 import GradientButton from '../components/GradientButton';
 
 interface DashboardPageProps {

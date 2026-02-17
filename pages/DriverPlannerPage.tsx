@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Language, User, Reservation, Customer, Vehicle } from '../types';
-import { MOCK_RESERVATIONS, MOCK_VEHICLES, MOCK_CUSTOMERS, MOCK_AGENCIES, MOCK_WORKERS } from '../constants';
+import { ALGERIAN_WILAYAS } from '../constants';
 
 interface DriverPlannerPageProps {
   lang: Language;

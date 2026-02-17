@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Language, Reservation, ReservationStatus, Customer, Vehicle, RentalOption, Worker, LocationLog } from '../types';
 // Fixed: Added ALGERIAN_WILAYAS to imports from constants
-import { MOCK_RESERVATIONS, MOCK_VEHICLES, MOCK_AGENCIES, MOCK_WORKERS, ALGERIAN_WILAYAS } from '../constants';
+import { ALGERIAN_WILAYAS } from '../constants';
 import GradientButton from '../components/GradientButton';
 
 interface PlannerPageProps { 

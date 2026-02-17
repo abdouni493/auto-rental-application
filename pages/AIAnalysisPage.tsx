@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Language } from '../types';
-import { TRANSLATIONS, MOCK_VEHICLES, MOCK_CUSTOMERS, MOCK_RESERVATIONS, MOCK_EXPENSES } from '../constants';
+import { TRANSLATIONS } from '../constants';
 import { getRentalAIAnalysis } from '../services/geminiService';
 import GradientButton from '../components/GradientButton';
 

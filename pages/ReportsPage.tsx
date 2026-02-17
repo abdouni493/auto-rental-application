@@ -1,17 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Language, Reservation, Vehicle, Customer, Worker, Expense, Maintenance, Inspection, Damage, Agency } from '../types';
-import { 
-  MOCK_RESERVATIONS, 
-  MOCK_VEHICLES, 
-  MOCK_CUSTOMERS, 
-  MOCK_WORKERS, 
-  MOCK_EXPENSES, 
-  MOCK_MAINTENANCE, 
-  MOCK_INSPECTIONS, 
-  MOCK_DAMAGES,
-  MOCK_AGENCIES
-} from '../constants';
+import { TRANSLATIONS } from '../constants';
 import GradientButton from '../components/GradientButton';
 
 interface ReportsPageProps {
