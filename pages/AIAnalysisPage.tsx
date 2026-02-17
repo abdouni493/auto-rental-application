@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
-import { Language } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Language, Vehicle, Customer, Expense, Reservation } from '../types';
 import { TRANSLATIONS } from '../constants';
 import { getRentalAIAnalysis } from '../services/geminiService';
+import * as dataService from '../services/dataService';
 import GradientButton from '../components/GradientButton';
 
 interface AIAnalysisPageProps {
@@ -15,9 +16,34 @@ const AIAnalysisPage: React.FC<AIAnalysisPageProps> = ({ lang }) => {
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<AnalysisCategory>('global');
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
   
   const isRtl = lang === 'ar';
   const t = TRANSLATIONS[lang];
+
+  // Load data on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [vData, cData, eData, rData] = await Promise.all([
+          dataService.getVehicles(),
+          dataService.getCustomers(),
+          dataService.getExpenses(),
+          dataService.getReservations()
+        ]);
+        setVehicles(vData);
+        setCustomers(cData);
+        setExpenses(eData);
+        setReservations(rData);
+      } catch (err) {
+        console.error('Failed to load AI analysis data:', err);
+      }
+    };
+    loadData();
+  }, []);
 
   const categories = [
     { id: 'global', labelFr: 'Stratégie Globale', labelAr: 'الاستراتيجية العامة', icon: '🌐', color: 'bg-indigo-50 text-indigo-600' },
@@ -30,7 +56,7 @@ const AIAnalysisPage: React.FC<AIAnalysisPageProps> = ({ lang }) => {
     const summary: any = {};
     
     if (category === 'fleet' || category === 'global') {
-      summary.vehicles = MOCK_VEHICLES.map(v => ({
+      summary.vehicles = vehicles.map(v => ({
         model: `${v.brand} ${v.model}`,
         rate: v.dailyRate,
         mileage: v.mileage,
@@ -39,7 +65,7 @@ const AIAnalysisPage: React.FC<AIAnalysisPageProps> = ({ lang }) => {
     }
     
     if (category === 'crm' || category === 'global') {
-      summary.customers = MOCK_CUSTOMERS.map(c => ({
+      summary.customers = customers.map(c => ({
         wilaya: c.wilaya,
         totalSpent: c.totalSpent,
         reservations: c.totalReservations
@@ -47,8 +73,8 @@ const AIAnalysisPage: React.FC<AIAnalysisPageProps> = ({ lang }) => {
     }
 
     if (category === 'finance' || category === 'global') {
-      summary.expenses = MOCK_EXPENSES.map(e => ({ name: e.name, cost: e.cost }));
-      summary.revenue = MOCK_RESERVATIONS.reduce((acc, r) => acc + r.paidAmount, 0);
+      summary.expenses = expenses.map(e => ({ name: e.name, cost: e.cost }));
+      summary.revenue = reservations.reduce((acc, r) => acc + (r.paidAmount || 0), 0);
     }
 
     return summary;

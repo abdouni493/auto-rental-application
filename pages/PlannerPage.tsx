@@ -68,19 +68,22 @@ const PlannerPage: React.FC<PlannerPageProps> = ({ lang, customers, onAddCustome
     { id: '3', name: 'Branch 3' }
   ]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [workers, setWorkers] = useState<Worker[]>([]);
   
   // Load agencies and vehicles
   useEffect(() => {
     const loadAgenciesAndVehicles = async () => {
       try {
-        const [agenciesData, vehiclesData] = await Promise.all([
+        const [agenciesData, vehiclesData, workersData] = await Promise.all([
           dataService.getAgencies().catch(() => agencies),
-          dataService.getVehicles()
+          dataService.getVehicles(),
+          dataService.getWorkers()
         ]);
         if (agenciesData) setAgencies(agenciesData);
         if (vehiclesData) setVehicles(vehiclesData);
+        if (workersData) setWorkers(workersData);
       } catch (err) {
-        console.error('Failed to load agencies/vehicles:', err);
+        console.error('Failed to load agencies/vehicles/workers:', err);
       }
     };
     loadAgenciesAndVehicles();
@@ -496,7 +499,7 @@ const PlannerPage: React.FC<PlannerPageProps> = ({ lang, customers, onAddCustome
                          {formData.isWithDriver && (
                            <select value={formData.driverId || ''} onChange={e => setFormData({...formData, driverId: e.target.value})} className="w-full px-6 py-4 rounded-2xl font-bold bg-white shadow-sm outline-none appearance-none cursor-pointer">
                               <option value="">Choisir un chauffeur</option>
-                              {MOCK_WORKERS.filter(w => w.role === 'driver').map(d => <option key={d.id} value={d.id}>{d.fullName}</option>)}
+                              {workers.filter(w => w.role === 'driver').map(d => <option key={d.id} value={d.id}>{d.fullName}</option>)}
                            </select>
                          )}
                       </div>

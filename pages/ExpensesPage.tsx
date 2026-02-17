@@ -228,7 +228,7 @@ const ExpensesPage: React.FC<ExpensesPageProps> = ({ lang }) => {
                   <div>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{currentT.vehicle}</label>
                     <select name="vehicleId" defaultValue={editingItem?.vehicleId} className="w-full px-6 py-4 bg-gray-50 rounded-2xl outline-none font-bold">
-                      {MOCK_VEHICLES.map(v => <option key={v.id} value={v.id}>{v.brand} {v.model} ({v.immatriculation})</option>)}
+                      {vehicles.map(v => <option key={v.id} value={v.id}>{v.brand} {v.model} ({v.immatriculation})</option>)}
                     </select>
                   </div>
                   <div>
@@ -297,7 +297,7 @@ const ExpensesPage: React.FC<ExpensesPageProps> = ({ lang }) => {
           ))
         ) : (
           maintenances.map(m => {
-            const v = MOCK_VEHICLES.find(veh => veh.id === m.vehicleId);
+            const v = vehicles.find(veh => veh.id === m.vehicleId);
             return (
               <div key={m.id} className="bg-white rounded-[2.5rem] p-8 border border-gray-100 shadow-sm hover:shadow-xl transition-all group">
                 <div className="flex justify-between items-start mb-6">

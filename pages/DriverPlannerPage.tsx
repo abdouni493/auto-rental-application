@@ -1,7 +1,8 @@
 
-import React, { useState, useMemo } from 'react';
-import { Language, User, Reservation, Customer, Vehicle } from '../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Language, User, Reservation, Customer, Vehicle, Worker, Agency } from '../types';
 import { ALGERIAN_WILAYAS } from '../constants';
+import * as dataService from '../services/dataService';
 
 interface DriverPlannerPageProps {
   lang: Language;
@@ -10,10 +11,41 @@ interface DriverPlannerPageProps {
 
 const DriverPlannerPage: React.FC<DriverPlannerPageProps> = ({ lang, user }) => {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming');
+  const [workers, setWorkers] = useState<Worker[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [agencies, setAgencies] = useState<Agency[]>([]);
+  const [loading, setLoading] = useState(true);
   const isRtl = lang === 'ar';
 
-  const currentWorker = useMemo(() => MOCK_WORKERS.find(w => w.username === user.username), [user.username]);
-  const driverMissions = useMemo(() => MOCK_RESERVATIONS.filter(r => r.driverId === currentWorker?.id), [currentWorker]);
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const [workersData, reservationsData, customersData, vehiclesData, agenciesData] = await Promise.all([
+          dataService.getWorkers(),
+          dataService.getReservations(),
+          dataService.getCustomers(),
+          dataService.getVehicles(),
+          dataService.getAgencies()
+        ]);
+        setWorkers(workersData);
+        setReservations(reservationsData);
+        setCustomers(customersData);
+        setVehicles(vehiclesData);
+        setAgencies(agenciesData);
+      } catch (err) {
+        console.error('Failed to load driver planner data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  const currentWorker = useMemo(() => workers.find(w => w.username === user.username), [workers, user.username]);
+  const driverMissions = useMemo(() => reservations.filter(r => r.driverId === currentWorker?.id), [reservations, currentWorker]);
 
   const filteredMissions = useMemo(() => {
     if (activeTab === 'upcoming') {
@@ -77,10 +109,10 @@ const DriverPlannerPage: React.FC<DriverPlannerPageProps> = ({ lang, user }) => 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
           {filteredMissions.map((mission) => {
             // Fixed typo MOCK_VE_HICLES to MOCK_VEHICLES
-            const v = MOCK_VEHICLES.find(veh => veh.id === mission.vehicleId);
-            const c = MOCK_CUSTOMERS.find(cust => cust.id === mission.customerId);
-            const startAgency = MOCK_AGENCIES.find(a => a.id === mission.pickupAgencyId);
-            const endAgency = MOCK_AGENCIES.find(a => a.id === mission.returnAgencyId);
+            const v = vehicles.find(veh => veh.id === mission.vehicleId);
+            const c = customers.find(cust => cust.id === mission.customerId);
+            const startAgency = agencies.find(a => a.id === mission.pickupAgencyId);
+            const endAgency = agencies.find(a => a.id === mission.returnAgencyId);
 
             return (
               <div key={mission.id} className="group bg-white rounded-[4rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden hover:shadow-[0_40px_100px_-20px_rgba(59,130,246,0.15)] transition-all duration-700 p-10 flex flex-col md:flex-row gap-10">

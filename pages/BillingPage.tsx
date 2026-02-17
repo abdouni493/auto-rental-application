@@ -1,8 +1,9 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Language, Reservation, Customer, Vehicle } from '../types';
 import { TRANSLATIONS } from '../constants';
 import GradientButton from '../components/GradientButton';
+import * as dataService from '../services/dataService';
 
 interface BillingPageProps {
   lang: Language;
@@ -16,6 +17,22 @@ const BillingPage: React.FC<BillingPageProps> = ({ lang, customers, vehicles, te
   const [activeModal, setActiveModal] = useState<'print-preview' | null>(null);
   const [selectedRes, setSelectedRes] = useState<Reservation | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadReservations = async () => {
+      try {
+        const data = await dataService.getReservations();
+        setReservations(data);
+      } catch (err) {
+        console.error('Failed to load reservations:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadReservations();
+  }, []);
 
   const isRtl = lang === 'ar';
   const t = {
@@ -54,12 +71,12 @@ const BillingPage: React.FC<BillingPageProps> = ({ lang, customers, vehicles, te
   }[lang];
 
   const filteredReservations = useMemo(() => {
-    return MOCK_RESERVATIONS.filter(res => {
+    return reservations.filter(res => {
       const client = customers.find(c => c.id === res.customerId);
       const name = `${client?.firstName} ${client?.lastName}`.toLowerCase();
-      return name.includes(searchTerm.toLowerCase()) || res.reservationNumber.toLowerCase().includes(searchTerm.toLowerCase());
+      return name.includes(searchTerm.toLowerCase()) || res.reservationNumber?.toLowerCase().includes(searchTerm.toLowerCase());
     });
-  }, [searchTerm, customers]);
+  }, [searchTerm, customers, reservations]);
 
   const handlePrintAction = (res: Reservation, category: string) => {
     const tpl = templates.find(t => t.category === category);

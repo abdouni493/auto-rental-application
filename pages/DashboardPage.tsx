@@ -1,8 +1,9 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Language, Vehicle, Customer, Reservation, User, Worker } from '../types';
 import { TRANSLATIONS } from '../constants';
 import GradientButton from '../components/GradientButton';
+import * as dataService from '../services/dataService';
 
 interface DashboardPageProps {
   lang: Language;
@@ -14,10 +15,33 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ lang, onNavigate, user })
   const isRtl = lang === 'ar';
   const isAdmin = user.role === 'admin';
   const isDriver = user.role === 'driver';
+  
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [workers, setWorkers] = useState<Worker[]>([]);
 
-  // Driver context
-  const currentWorker = useMemo(() => MOCK_WORKERS.find(w => w.username === user.username), [user.username]);
-  const driverMissions = useMemo(() => MOCK_RESERVATIONS.filter(r => r.driverId === currentWorker?.id), [currentWorker]);
+  // Load real data on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [resData, vehiclesData, workersData] = await Promise.all([
+          dataService.getReservations(),
+          dataService.getVehicles(),
+          dataService.getWorkers()
+        ]);
+        setReservations(resData);
+        setVehicles(vehiclesData);
+        setWorkers(workersData);
+      } catch (err) {
+        console.error('Failed to load dashboard data:', err);
+      }
+    };
+    loadData();
+  }, []);
+
+  // Driver context - uses real data
+  const currentWorker = useMemo(() => workers.find(w => w.username === user.username), [workers, user.username]);
+  const driverMissions = useMemo(() => reservations.filter(r => r.driverId === currentWorker?.id), [reservations, currentWorker]);
   const upcomingMission = useMemo(() => driverMissions.find(r => r.status === 'confermer' || r.status === 'en cours'), [driverMissions]);
 
   const stats = useMemo(() => {
@@ -30,17 +54,17 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ lang, onNavigate, user })
       };
     }
 
-    const totalGains = MOCK_RESERVATIONS.reduce((acc, r) => acc + r.paidAmount, 0);
-    const pendingGains = MOCK_RESERVATIONS.reduce((acc, r) => acc + (r.totalAmount - r.paidAmount), 0);
-    const rentedCount = MOCK_VEHICLES.filter(v => v.status === 'loué').length;
-    const totalVehicles = MOCK_VEHICLES.length;
+    const totalGains = reservations.reduce((acc, r) => acc + (r.totalAmount || 0), 0);
+    const pendingGains = reservations.reduce((acc, r) => acc + ((r.totalAmount || 0) - (r.paidAmount || 0)), 0);
+    const rentedCount = vehicles.filter(v => v.status === 'loué').length;
+    const totalVehicles = vehicles.length;
     
-    const techAlerts = MOCK_VEHICLES.filter(v => {
+    const techAlerts = vehicles.filter(v => {
       const expiry = new Date(v.techControlDate);
       return (expiry.getTime() - new Date().getTime()) / (1000 * 3600 * 24) < 15;
     });
 
-    const insuranceAlerts = MOCK_VEHICLES.filter(v => {
+    const insuranceAlerts = vehicles.filter(v => {
       const expiry = new Date(v.insuranceExpiry);
       return (expiry.getTime() - new Date().getTime()) / (1000 * 3600 * 24) < 30;
     });
@@ -49,11 +73,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ lang, onNavigate, user })
       totalGains, pendingGains, rentedCount, totalVehicles,
       techAlerts: techAlerts.length,
       insuranceAlerts: insuranceAlerts.length,
-      customerCount: MOCK_CUSTOMERS.length,
+      customerCount: customers.length,
       utilization: Math.round((rentedCount / totalVehicles) * 100),
-      inspectionsToday: MOCK_INSPECTIONS.filter(i => i.date.includes(new Date().toISOString().split('T')[0])).length
+      inspectionsToday: 0
     };
-  }, [isDriver, driverMissions]);
+  }, [isDriver, driverMissions, customers]);
 
   const t = {
     fr: {
@@ -168,7 +192,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ lang, onNavigate, user })
            <div className="bg-white p-10 rounded-[4rem] border border-gray-100 shadow-sm">
               <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-10 border-b pb-6">Performance Agences</h3>
               <div className="space-y-10">
-                 {MOCK_AGENCIES.map((a, i) => (
+                 {agencies.map((a, i) => (
                    <div key={a.id} className="space-y-4">
                       <div className="flex justify-between items-center"><span className="text-sm font-black text-gray-900 uppercase truncate pr-4">{a.name}</span><span className="text-xs font-black text-blue-600">DZ {(75000 * (i+1)).toLocaleString()}</span></div>
                       <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden shadow-inner"><div className="h-full bg-blue-600 rounded-full" style={{ width: `${85 - (i*15)}%` }}></div></div>
@@ -223,7 +247,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ lang, onNavigate, user })
                 <div className="flex items-center gap-10 bg-gray-50 p-10 rounded-[3.5rem] border border-gray-100 relative shadow-inner">
                    <div className="flex-1 text-center">
                       <p className="text-[10px] font-black text-gray-400 uppercase mb-3">DÉPART</p>
-                      <p className="text-xl font-black text-gray-900">{MOCK_AGENCIES.find(a => a.id === upcomingMission.pickupAgencyId)?.name}</p>
+                      <p className="text-xl font-black text-gray-900">{agencies.find(a => a.id === upcomingMission.pickupAgencyId)?.name}</p>
                       <p className="text-blue-600 font-black text-xs mt-2">{new Date(upcomingMission.startDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                    </div>
                    <div className="w-16 h-px bg-blue-200 relative">
@@ -231,24 +255,24 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ lang, onNavigate, user })
                    </div>
                    <div className="flex-1 text-center">
                       <p className="text-[10px] font-black text-gray-400 uppercase mb-3">RETOUR</p>
-                      <p className="text-xl font-black text-gray-900">{MOCK_AGENCIES.find(a => a.id === upcomingMission.returnAgencyId)?.name}</p>
+                      <p className="text-xl font-black text-gray-900">{agencies.find(a => a.id === upcomingMission.returnAgencyId)?.name}</p>
                       <p className="text-indigo-600 font-black text-xs mt-2">{new Date(upcomingMission.endDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                    </div>
                 </div>
 
                 <div className="flex items-center gap-8">
-                   <img src={MOCK_VEHICLES.find(v => v.id === upcomingMission.vehicleId)?.mainImage} className="w-48 h-32 rounded-[2rem] object-cover shadow-2xl border-4 border-white" />
+                   <img src={vehicles.find(v => v.id === upcomingMission.vehicleId)?.mainImage} className="w-48 h-32 rounded-[2rem] object-cover shadow-2xl border-4 border-white" />
                    <div>
                       <h4 className="text-3xl font-black text-gray-900 uppercase leading-none mb-3">
-                         {MOCK_VEHICLES.find(v => v.id === upcomingMission.vehicleId)?.brand} {MOCK_VEHICLES.find(v => v.id === upcomingMission.vehicleId)?.model}
+                         {vehicles.find(v => v.id === upcomingMission.vehicleId)?.brand} {vehicles.find(v => v.id === upcomingMission.vehicleId)?.model}
                       </h4>
                       <p className="text-blue-600 font-black tracking-widest text-sm bg-blue-50 inline-block px-4 py-1 rounded-full uppercase">
-                         {MOCK_VEHICLES.find(v => v.id === upcomingMission.vehicleId)?.immatriculation}
+                         {vehicles.find(v => v.id === upcomingMission.vehicleId)?.immatriculation}
                       </p>
                       <div className="mt-4 flex items-center gap-3">
-                         <img src={MOCK_CUSTOMERS.find(c => c.id === upcomingMission.customerId)?.profilePicture} className="w-10 h-10 rounded-full border-2 border-white shadow-sm" />
+                         <img src={customers.find(c => c.id === upcomingMission.customerId)?.profilePicture} className="w-10 h-10 rounded-full border-2 border-white shadow-sm" />
                          <p className="text-xs font-bold text-gray-500 uppercase tracking-tighter">
-                            Client: <span className="text-gray-900 font-black">{MOCK_CUSTOMERS.find(c => c.id === upcomingMission.customerId)?.firstName}</span>
+                            Client: <span className="text-gray-900 font-black">{customers.find(c => c.id === upcomingMission.customerId)?.firstName}</span>
                          </p>
                       </div>
                    </div>

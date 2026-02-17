@@ -289,13 +289,13 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ lang }) => {
                    <div>
                       <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 border-b pb-2">Top Clients (Période)</h4>
                       <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4">
-                         {MOCK_CUSTOMERS.map(c => (
+                         {reportData?.customers?.map((c: any) => (
                            <div key={c.id} className="shrink-0 w-40 p-6 bg-blue-50/50 rounded-[2.5rem] text-center border border-blue-100">
                               <img src={c.profilePicture} className="w-14 h-14 rounded-full mx-auto border-2 border-white mb-4" />
                               <p className="text-xs font-black text-gray-900 truncate">{c.firstName}</p>
-                              <p className="text-[9px] font-bold text-blue-600 mt-1">{c.totalSpent.toLocaleString()} DZ</p>
+                              <p className="text-[9px] font-bold text-blue-600 mt-1">{(c.totalSpent || 0).toLocaleString()} DZ</p>
                            </div>
-                         ))}
+                         )) || []}
                       </div>
                    </div>
                 </div>

@@ -20,6 +20,7 @@ interface ImageItem {
 
 const VehiclesPage: React.FC<VehiclesPageProps> = ({ lang, initialVehicles, onUpdateVehicles }) => {
   const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [activeModal, setActiveModal] = useState<{ type: ModalType; vehicle: Vehicle | null }>({ type: null, vehicle: null });
@@ -34,7 +35,17 @@ const VehiclesPage: React.FC<VehiclesPageProps> = ({ lang, initialVehicles, onUp
   // Load vehicles on mount
   useEffect(() => {
     loadVehicles();
+    loadReservations();
   }, []);
+
+  const loadReservations = async () => {
+    try {
+      const data = await dataService.getReservations();
+      setReservations(data);
+    } catch (err) {
+      console.error('Error loading reservations:', err);
+    }
+  };
 
   const loadVehicles = async () => {
     try {
@@ -289,8 +300,8 @@ const VehiclesPage: React.FC<VehiclesPageProps> = ({ lang, initialVehicles, onUp
 
   const HistoryModal = ({ vehicle }: { vehicle: Vehicle }) => {
     const vehicleRentals = useMemo(() => {
-      return MOCK_RESERVATIONS.filter(r => r.vehicleId === vehicle.id);
-    }, [vehicle.id]);
+      return reservations.filter(r => r.vehicleId === vehicle.id);
+    }, [vehicle.id, reservations]);
 
     const totalRevenue = useMemo(() => {
       return vehicleRentals.reduce((acc, r) => acc + r.totalAmount, 0);
