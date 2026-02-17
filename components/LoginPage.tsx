@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { User, Role, Language } from '../types';
 import { TRANSLATIONS } from '../constants';
 import GradientButton from './GradientButton';
+import { supabase } from '../config/supabase';
 
 interface LoginPageProps {
   onLogin: (user: User) => void;
@@ -15,6 +16,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, lang, onLanguageToggle }
   const [password, setPassword] = useState('');
   const [isVisible, setIsVisible] = useState(false);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   
   const t = TRANSLATIONS[lang];
   const isRtl = lang === 'ar';
@@ -23,34 +25,93 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, lang, onLanguageToggle }
     setIsVisible(true);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
     
-    if (!username || !password) {
-      setError(lang === 'fr' ? 'Veuillez remplir tous les champs' : 'يرجى ملء جميع الحقول');
-      return;
+    try {
+      if (!username || !password) {
+        setError(lang === 'fr' ? 'Veuillez remplir tous les champs' : 'يرجى ملء جميع الحقول');
+        setIsLoading(false);
+        return;
+      }
+      
+      if (username.length < 3) {
+        setError(lang === 'fr' ? 'Le nom d\'utilisateur doit contenir au moins 3 caractères' : 'يجب أن يحتوي اسم المستخدم على 3 أحرف على الأقل');
+        setIsLoading(false);
+        return;
+      }
+      
+      if (password.length < 6) {
+        setError(lang === 'fr' ? 'Le mot de passe doit contenir au moins 6 caractères' : 'يجب أن تحتوي كلمة المرور على 6 أحرف على الأقل');
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if user exists in workers table
+      const { data: existingWorker, error: checkError } = await supabase
+        .from('workers')
+        .select('id, username, role')
+        .eq('username', username)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        // PGRST116 means no rows found, which is expected for new users
+        throw checkError;
+      }
+
+      // Determine role based on username pattern
+      let role: Role = 'worker';
+      if (username.toLowerCase().includes('admin')) {
+        role = 'admin';
+      } else if (username.toLowerCase().includes('driver')) {
+        role = 'driver';
+      }
+
+      if (existingWorker) {
+        // User exists - login
+        onLogin({ username, role: existingWorker.role as Role });
+      } else {
+        // User doesn't exist - create account and login as admin
+        const { data: newWorker, error: createError } = await supabase
+          .from('workers')
+          .insert([
+            {
+              full_name: username,
+              birthday: new Date().toISOString().split('T')[0],
+              phone: '0000000000',
+              address: 'Auto-registered',
+              id_card_number: `AUTO_${Date.now()}`,
+              role: 'admin', // Always create as admin for auto-registered users
+              username: username,
+              password: password,
+              payment_type: 'month',
+              amount: 0
+            }
+          ])
+          .select()
+          .single();
+
+        if (createError) {
+          setError(lang === 'fr' 
+            ? 'Erreur lors de la création du compte: ' + createError.message 
+            : 'خطأ في إنشاء الحساب: ' + createError.message);
+          setIsLoading(false);
+          return;
+        }
+
+        // Login with new admin account
+        onLogin({ username, role: 'admin' });
+      }
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError(lang === 'fr' 
+        ? 'Erreur de connexion: ' + err.message 
+        : 'خطأ في الاتصال: ' + err.message);
+    } finally {
+      setIsLoading(false);
     }
-    
-    if (username.length < 3) {
-      setError(lang === 'fr' ? 'Le nom d\'utilisateur doit contenir au moins 3 caractères' : 'يجب أن يحتوي اسم المستخدم على 3 أحرف على الأقل');
-      return;
-    }
-    
-    if (password.length < 6) {
-      setError(lang === 'fr' ? 'Le mot de passe doit contenir au moins 6 caractères' : 'يجب أن تحتوي كلمة المرور على 6 أحرف على الأقل');
-      return;
-    }
-    
-    // Determine role based on username pattern or default to 'worker'
-    let role: Role = 'worker';
-    if (username.toLowerCase().includes('admin')) {
-      role = 'admin';
-    } else if (username.toLowerCase().includes('driver')) {
-      role = 'driver';
-    }
-    
-    onLogin({ username, role });
   };
 
   return (
@@ -134,8 +195,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, lang, onLanguageToggle }
                 </div>
               </div>
 
-              <GradientButton type="submit" className="w-full py-5 text-2xl mt-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500">
-                {t.loginButton}
+              <GradientButton 
+                type="submit" 
+                disabled={isLoading}
+                className={`w-full py-5 text-2xl mt-8 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {isLoading ? (lang === 'fr' ? 'Connexion...' : 'جاري الدخول...') : t.loginButton}
               </GradientButton>
             </form>
           </div>
