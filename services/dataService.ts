@@ -471,6 +471,54 @@ export const createInspection = async (inspection: Omit<Inspection, 'id'>): Prom
   return formatInspection(data);
 };
 
+export const updateInspection = async (id: string, updates: Partial<Inspection>): Promise<Inspection> => {
+  const updateData: any = {};
+  
+  if (updates.mileage !== undefined) updateData.mileage = updates.mileage;
+  if (updates.fuel) updateData.fuel = updates.fuel;
+  if (updates.security) {
+    if (updates.security.lights !== undefined) updateData.security_lights = updates.security.lights;
+    if (updates.security.tires !== undefined) updateData.security_tires = updates.security.tires;
+    if (updates.security.brakes !== undefined) updateData.security_brakes = updates.security.brakes;
+    if (updates.security.wipers !== undefined) updateData.security_wipers = updates.security.wipers;
+    if (updates.security.mirrors !== undefined) updateData.security_mirrors = updates.security.mirrors;
+    if (updates.security.belts !== undefined) updateData.security_belts = updates.security.belts;
+    if (updates.security.horn !== undefined) updateData.security_horn = updates.security.horn;
+  }
+  if (updates.equipment) {
+    if (updates.equipment.spareWheel !== undefined) updateData.equipment_spare_wheel = updates.equipment.spareWheel;
+    if (updates.equipment.jack !== undefined) updateData.equipment_jack = updates.equipment.jack;
+    if (updates.equipment.triangles !== undefined) updateData.equipment_triangles = updates.equipment.triangles;
+    if (updates.equipment.firstAid !== undefined) updateData.equipment_first_aid = updates.equipment.firstAid;
+    if (updates.equipment.docs !== undefined) updateData.equipment_docs = updates.equipment.docs;
+  }
+  if (updates.comfort) {
+    if (updates.comfort.ac !== undefined) updateData.comfort_ac = updates.comfort.ac;
+  }
+  if (updates.cleanliness) {
+    if (updates.cleanliness.interior !== undefined) updateData.cleanliness_interior = updates.cleanliness.interior;
+    if (updates.cleanliness.exterior !== undefined) updateData.cleanliness_exterior = updates.cleanliness.exterior;
+  }
+  if (updates.notes) updateData.notes = updates.notes;
+  if (updates.exteriorPhotos) updateData.exterior_photos = updates.exteriorPhotos;
+  if (updates.interiorPhotos) updateData.interior_photos = updates.interiorPhotos;
+  if (updates.signature) updateData.signature = updates.signature;
+
+  const { data, error } = await supabase
+    .from('inspections')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return formatInspection(data);
+};
+
+export const deleteInspection = async (id: string): Promise<void> => {
+  const { error } = await supabase.from('inspections').delete().eq('id', id);
+  if (error) throw error;
+};
+
 // =====================================================
 // DAMAGES OPERATIONS
 // =====================================================

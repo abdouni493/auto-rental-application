@@ -249,11 +249,40 @@ const OperationsPage: React.FC<OperationsPageProps> = ({
     }
   };
 
-  const handleFinishInsp = () => {
-    const finalData = { ...inspFormData as Inspection, id: editingInspId || `insp-${Date.now()}` };
-    if (editingInspId) onUpdateInspection(finalData);
-    else onAddInspection(finalData);
-    setIsCreatingInsp(false); setEditingInspId(null); setStepInsp(1); setInspFormData(initialInspForm);
+  const handleFinishInsp = async () => {
+    try {
+      const finalData = { ...inspFormData as Inspection, id: editingInspId || `insp-${Date.now()}` };
+      
+      if (editingInspId) {
+        // Update existing inspection in Supabase
+        await dataService.updateInspection(editingInspId, finalData);
+        onUpdateInspection(finalData);
+      } else {
+        // Create new inspection in Supabase
+        const createdInspection = await dataService.createInspection(finalData);
+        onAddInspection(createdInspection);
+      }
+      
+      setIsCreatingInsp(false); 
+      setEditingInspId(null); 
+      setStepInsp(1); 
+      setInspFormData(initialInspForm);
+    } catch (error) {
+      console.error('Error saving inspection:', error);
+      alert('Error saving inspection. Please try again.');
+    }
+  };
+
+  const handleDeleteInsp = async (inspId: string) => {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cet inspection?')) {
+      try {
+        await dataService.deleteInspection(inspId);
+        onDeleteInspection(inspId);
+      } catch (error) {
+        console.error('Error deleting inspection:', error);
+        alert('Error deleting inspection. Please try again.');
+      }
+    }
   };
 
   const handlePrint = (resId: string, category: string) => {
@@ -505,7 +534,7 @@ const OperationsPage: React.FC<OperationsPageProps> = ({
                      <div className="grid grid-cols-3 gap-3">
                         <button onClick={() => setViewingInsp(insp)} className="p-4 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"><span className="text-xl">👁️</span></button>
                         <button onClick={() => handlePrint(insp.reservationId, insp.type === 'depart' ? 'checkin' : 'checkout')} className="p-4 bg-gray-50 text-gray-400 rounded-2xl hover:bg-gray-900 hover:text-white transition-all shadow-sm"><span className="text-xl">🖨️</span></button>
-                        <button onClick={() => onDeleteInspection(insp.id)} className="p-4 bg-red-50 text-red-600 rounded-2xl hover:bg-red-600 hover:text-white transition-all shadow-sm"><span className="text-xl">🗑️</span></button>
+                        <button onClick={() => handleDeleteInsp(insp.id)} className="p-4 bg-red-50 text-red-600 rounded-2xl hover:bg-red-600 hover:text-white transition-all shadow-sm"><span className="text-xl">🗑️</span></button>
                      </div>
                      <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-gray-50">
                         <button onClick={() => handlePrint(insp.reservationId, 'invoice')} className="text-[8px] font-black bg-gray-50 py-2 rounded-lg hover:bg-blue-600 hover:text-white transition-all uppercase">Facture</button>
