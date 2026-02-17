@@ -201,7 +201,7 @@ const VehiclesPage: React.FC<VehiclesPageProps> = ({ lang, initialVehicles, onUp
     setFormImages(formImages.filter(img => img.id !== id));
   };
 
-  const filteredVehicles = initialVehicles.filter(v => 
+  const filteredVehicles = vehicles.filter(v => 
     v.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
     v.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
     v.immatriculation.toLowerCase().includes(searchTerm.toLowerCase())

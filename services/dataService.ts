@@ -599,11 +599,11 @@ export const createMaintenance = async (maintenance: Omit<Maintenance, 'id'>): P
     .insert([{
       vehicle_id: maintenance.vehicleId,
       type: maintenance.type,
+      name: maintenance.name,
       maintenance_date: maintenance.date,
       cost: maintenance.cost,
-      description: maintenance.description,
-      status: maintenance.status,
-      notes: maintenance.notes
+      expiry_date: maintenance.expiryDate,
+      note: maintenance.note
     }])
     .select()
     .single();
@@ -614,9 +614,11 @@ export const createMaintenance = async (maintenance: Omit<Maintenance, 'id'>): P
 export const updateMaintenance = async (id: string, updates: Partial<Maintenance>): Promise<Maintenance> => {
   const updateData: any = {};
   
-  if (updates.status) updateData.status = updates.status;
-  if (updates.cost) updateData.cost = updates.cost;
-  if (updates.notes) updateData.notes = updates.notes;
+  if (updates.name) updateData.name = updates.name;
+  if (updates.cost !== undefined) updateData.cost = updates.cost;
+  if (updates.date) updateData.maintenance_date = updates.date;
+  if (updates.expiryDate) updateData.expiry_date = updates.expiryDate;
+  if (updates.note) updateData.note = updates.note;
 
   const { data, error } = await supabase
     .from('maintenances')
@@ -815,10 +817,10 @@ function formatMaintenance(data: any): Maintenance {
     id: data.id,
     vehicleId: data.vehicle_id,
     type: data.type,
+    name: data.name,
     date: data.maintenance_date,
     cost: data.cost,
-    description: data.description,
-    status: data.status,
-    notes: data.notes
+    expiryDate: data.expiry_date,
+    note: data.note
   };
 }
