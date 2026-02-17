@@ -1,14 +1,12 @@
 // =====================================================
 // ADDITIONAL SERVICE FUNCTIONS TO ADD TO dataService.ts
 // =====================================================
-// Copy these functions to extend your data service
+// INSTRUCTIONS: Copy these functions into your existing dataService.ts file
+// Replace the imports below with your actual project imports
+// These are meant to be merged into dataService.ts, not used as a standalone file
 
-// =====================================================
-// RESERVATIONS EXTENDED OPERATIONS
-// =====================================================
-
-import { supabase } from '../config/supabase';
-import { Reservation, RentalOption } from '../types';
+import { supabase } from './config/supabase';
+import type { Reservation, RentalOption, Maintenance, LocationLog } from './types';
 
 export const getReservationsByCustomer = async (customerId: string): Promise<Reservation[]> => {
   const { data, error } = await supabase
@@ -345,6 +343,29 @@ export const getVehicleUtilization = async (): Promise<{
 // ADDITIONAL FORMATTERS
 // =====================================================
 
+function formatReservation(data: any): Reservation {
+  return {
+    id: data.id,
+    reservationNumber: data.reservation_number,
+    customerId: data.customer_id,
+    vehicleId: data.vehicle_id,
+    driverId: data.driver_id || null,
+    pickupAgencyId: data.pickup_agency_id,
+    returnAgencyId: data.return_agency_id,
+    startDate: data.start_date,
+    endDate: data.end_date,
+    status: data.status,
+    totalAmount: data.total_amount || 0,
+    paidAmount: data.paid_amount || 0,
+    cautionAmount: data.caution_amount || 0,
+    discount: data.discount || 0,
+    withTVA: data.with_tva || false,
+    options: data.options || [],
+    activationLog: data.activation_log ? JSON.parse(data.activation_log) : null,
+    terminationLog: data.termination_log ? JSON.parse(data.termination_log) : null
+  };
+}
+
 function formatRentalOption(data: any): RentalOption {
   return {
     id: data.id,
@@ -378,33 +399,11 @@ function formatLocationLog(data: any): LocationLog {
 }
 
 // =====================================================
-// EXPORT ALL FUNCTIONS
+// HOW TO USE THIS FILE
 // =====================================================
-
-// Add these to your existing export statements
-export {
-  getReservationsByCustomer,
-  getReservationsByVehicle,
-  getReservationsByStatus,
-  getReservationById,
-  getRentalOptions,
-  getRentalOptionsByCategory,
-  createRentalOption,
-  updateRentalOption,
-  deleteRentalOption,
-  getMaintenanceByVehicle,
-  getMaintenanceExpiring,
-  createMaintenance,
-  updateMaintenance,
-  deleteMaintenance,
-  getLocationLogs,
-  createLocationLog,
-  getTemplates,
-  getTemplatesByCategory,
-  createTemplate,
-  updateTemplate,
-  deleteTemplate,
-  getRevenueStats,
-  getExpenseStats,
-  getVehicleUtilization
-};
+// 1. Open your services/dataService.ts file
+// 2. Copy all the functions from this file (from getReservationsByCustomer to getVehicleUtilization)
+// 3. Paste them into dataService.ts before the final export statements
+// 4. Update the imports at the top of dataService.ts to include Maintenance and LocationLog if not already there
+// 5. Add these function names to your existing export statements
+// 6. Delete this file (EXTENDED_SERVICES.ts) - it's just a reference
