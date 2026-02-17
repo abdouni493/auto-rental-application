@@ -52,10 +52,16 @@ const VehiclesPage: React.FC<VehiclesPageProps> = ({ lang, initialVehicles, onUp
       setIsLoading(true);
       setError(null);
       const data = await dataService.getVehicles();
-      setVehicles(data);
-      onUpdateVehicles(data);
+      if (data && data.length > 0) {
+        setVehicles(data);
+        onUpdateVehicles(data);
+      } else {
+        setVehicles([]);
+        setError(lang === 'fr' ? 'Aucun véhicule trouvé' : 'لم يتم العثور على مركبات');
+      }
     } catch (err) {
       console.error('Error loading vehicles:', err);
+      setVehicles([]);
       setError(lang === 'fr' ? 'Erreur lors du chargement des véhicules' : 'خطأ في تحميل المركبات');
     } finally {
       setIsLoading(false);
@@ -557,6 +563,30 @@ const VehiclesPage: React.FC<VehiclesPageProps> = ({ lang, initialVehicles, onUp
   }
 
   // --- Grid View ---
+
+  if (isLoading) {
+    return (
+      <div className={`p-8 flex items-center justify-center min-h-[60vh] ${isRtl ? 'font-arabic text-right' : ''}`}>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-6"></div>
+          <p className="text-gray-600 font-bold text-lg">{lang === 'fr' ? 'Chargement des véhicules...' : 'جاري تحميل المركبات...'}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || vehicles.length === 0) {
+    return (
+      <div className={`p-8 flex flex-col items-center justify-center min-h-[60vh] ${isRtl ? 'font-arabic text-right' : ''}`}>
+        <span className="text-8xl mb-6">🚗</span>
+        <h2 className="text-3xl font-black text-gray-900 mb-3">{lang === 'fr' ? 'Aucun Véhicule' : 'لا توجد مركبات'}</h2>
+        <p className="text-gray-500 font-bold text-lg mb-8">{error || (lang === 'fr' ? 'Commencez par ajouter des véhicules à votre flotte.' : 'ابدأ بإضافة مركبات إلى أسطولك.')}</p>
+        <GradientButton onClick={() => handleOpenForm()} className="!px-16 !py-6 text-xl shadow-2xl">
+          + {currentT.addBtn}
+        </GradientButton>
+      </div>
+    );
+  }
 
   return (
     <div className={`p-4 md:p-8 animate-fade-in ${isRtl ? 'font-arabic text-right' : ''}`}>

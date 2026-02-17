@@ -62,11 +62,7 @@ const PlannerPage: React.FC<PlannerPageProps> = ({ lang, customers, onAddCustome
   }, []);
   
   // Add state for agencies and vehicles
-  const [agencies, setAgencies] = useState<any[]>([
-    { id: '1', name: 'Branch 1' },
-    { id: '2', name: 'Branch 2' },
-    { id: '3', name: 'Branch 3' }
-  ]);
+  const [agencies, setAgencies] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
   
@@ -75,13 +71,13 @@ const PlannerPage: React.FC<PlannerPageProps> = ({ lang, customers, onAddCustome
     const loadAgenciesAndVehicles = async () => {
       try {
         const [agenciesData, vehiclesData, workersData] = await Promise.all([
-          dataService.getAgencies().catch(() => agencies),
+          dataService.getAgencies(),
           dataService.getVehicles(),
           dataService.getWorkers()
         ]);
-        if (agenciesData) setAgencies(agenciesData);
-        if (vehiclesData) setVehicles(vehiclesData);
-        if (workersData) setWorkers(workersData);
+        if (agenciesData && agenciesData.length > 0) setAgencies(agenciesData);
+        if (vehiclesData && vehiclesData.length > 0) setVehicles(vehiclesData);
+        if (workersData && workersData.length > 0) setWorkers(workersData);
       } catch (err) {
         console.error('Failed to load agencies/vehicles/workers:', err);
       }
