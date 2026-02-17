@@ -129,6 +129,27 @@ const OperationsPage: React.FC<OperationsPageProps> = ({
   const [stepInsp, setStepInsp] = useState<InspectionStep>(1);
   const [searchResQuery, setSearchResQuery] = useState('');
   const [viewingInsp, setViewingInsp] = useState<Inspection | null>(null);
+  
+  // Add state for reservations and customers
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  
+  // Load real data from Supabase
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [resData, custData] = await Promise.all([
+          dataService.getReservations(),
+          dataService.getCustomers()
+        ]);
+        setReservations(resData);
+        setCustomers(custData);
+      } catch (err) {
+        console.error('Failed to load operations data:', err);
+      }
+    };
+    loadData();
+  }, []);
 
   // Print State
   const [activePrintModal, setActivePrintModal] = useState<'print-view' | null>(null);
@@ -205,8 +226,8 @@ const OperationsPage: React.FC<OperationsPageProps> = ({
 
   const filteredReservations = useMemo(() => {
     if (!searchResQuery) return [];
-    return MOCK_RESERVATIONS.filter(res => {
-      const client = MOCK_CUSTOMERS.find(c => c.id === res.customerId);
+    return reservations.filter(res => {
+      const client = customers.find(c => c.id === res.customerId);
       const name = `${client?.firstName} ${client?.lastName}`.toLowerCase();
       return name.includes(searchResQuery.toLowerCase()) || res.reservationNumber.toLowerCase().includes(searchResQuery.toLowerCase());
     }).slice(0, 5);
@@ -236,7 +257,7 @@ const OperationsPage: React.FC<OperationsPageProps> = ({
   };
 
   const handlePrint = (resId: string, category: string) => {
-    const res = MOCK_RESERVATIONS.find(r => r.id === resId);
+    const res = reservations.find(r => r.id === resId);
     const tpl = templates.find(t => t.category === category);
     if (res && tpl) {
       setPrintRes(res);
@@ -246,7 +267,7 @@ const OperationsPage: React.FC<OperationsPageProps> = ({
   };
 
   const replaceVariables = (content: string, res: Reservation) => {
-    const client = MOCK_CUSTOMERS.find(c => c.id === res.customerId);
+    const client = customers.find(c => c.id === res.customerId);
     const vehicle = vehicles.find(v => v.id === res.vehicleId);
     return content
       .replace('{{client_name}}', `${client?.firstName} ${client?.lastName}`)
@@ -258,7 +279,7 @@ const OperationsPage: React.FC<OperationsPageProps> = ({
       .replace('{{current_date}}', new Date().toLocaleDateString());
   };
 
-  const currentRes = MOCK_RESERVATIONS.find(r => r.id === inspFormData.reservationId);
+  const currentRes = reservations.find(r => r.id === inspFormData.reservationId);
   const currentVeh = currentRes ? vehicles.find(v => v.id === currentRes.vehicleId) : null;
 
   if (isCreatingInsp) {
@@ -285,7 +306,7 @@ const OperationsPage: React.FC<OperationsPageProps> = ({
                               <button key={res.id} onClick={() => { setInspFormData({...inspFormData, reservationId: res.id}); setSearchResQuery(''); }} className="w-full text-left p-8 hover:bg-blue-50 border-b last:border-none flex justify-between items-center group">
                                 <div className="flex items-center gap-6">
                                    <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center text-2xl group-hover:bg-blue-600 group-hover:text-white transition-all">👤</div>
-                                   <div><p className="font-black text-gray-900 text-lg">{MOCK_CUSTOMERS.find(c => c.id === res.customerId)?.firstName} {MOCK_CUSTOMERS.find(c => c.id === res.customerId)?.lastName}</p><p className="text-xs font-bold text-gray-400 tracking-widest uppercase">Réservation: #{res.reservationNumber}</p></div>
+                                   <div><p className="font-black text-gray-900 text-lg">{customers.find(c => c.id === res.customerId)?.firstName} {customers.find(c => c.id === res.customerId)?.lastName}</p><p className="text-xs font-bold text-gray-400 tracking-widest uppercase">Réservation: #{res.reservationNumber}</p></div>
                                 </div>
                                 <span className="px-4 py-2 bg-gray-100 rounded-full text-[10px] font-black uppercase text-gray-400 group-hover:bg-blue-100 group-hover:text-blue-600">Sélectionner</span>
                               </button>
@@ -451,9 +472,9 @@ const OperationsPage: React.FC<OperationsPageProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-10">
             {inspections.map(insp => {
-              const res = MOCK_RESERVATIONS.find(r => r.id === insp.reservationId);
+              const res = reservations.find(r => r.id === insp.reservationId);
               const veh = vehicles.find(v => v.id === res?.vehicleId);
-              const client = MOCK_CUSTOMERS.find(c => c.id === res?.customerId);
+              const client = customers.find(c => c.id === res?.customerId);
               return (
                 <div key={insp.id} className="group bg-white rounded-[4rem] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden hover:shadow-[0_40px_100px_-25px_rgba(59,130,246,0.15)] hover:-translate-y-4 transition-all duration-700">
                   <div className="relative h-60 overflow-hidden">
@@ -544,9 +565,9 @@ const OperationsPage: React.FC<OperationsPageProps> = ({
 
       {/* --- Detailed Report View Modal --- */}
       {viewingInsp && (() => {
-        const res = MOCK_RESERVATIONS.find(r => r.id === viewingInsp.reservationId);
-        const veh = MOCK_VEHICLES.find(v => v.id === res?.vehicleId);
-        const client = MOCK_CUSTOMERS.find(c => c.id === res?.customerId);
+        const res = reservations.find(r => r.id === viewingInsp.reservationId);
+        const veh = vehicles.find(v => v.id === res?.vehicleId);
+        const client = customers.find(c => c.id === res?.customerId);
         return (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
              <div className="bg-white w-full max-w-6xl rounded-[4rem] shadow-2xl animate-scale-in overflow-hidden max-h-[95vh] flex flex-col border border-white/20">

@@ -1,9 +1,10 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Language, Reservation, ReservationStatus, Customer, Vehicle, RentalOption, Worker, LocationLog } from '../types';
 // Fixed: Added ALGERIAN_WILAYAS to imports from constants
 import { ALGERIAN_WILAYAS } from '../constants';
 import GradientButton from '../components/GradientButton';
+import * as dataService from '../services/dataService';
 
 interface PlannerPageProps { 
   lang: Language; 
@@ -38,11 +39,52 @@ const ModalBase: React.FC<{ title: string, children?: React.ReactNode, onClose: 
 );
 
 const PlannerPage: React.FC<PlannerPageProps> = ({ lang, customers, onAddCustomer }) => {
-  const [reservations, setReservations] = useState<Reservation[]>(MOCK_RESERVATIONS);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
   const [isCreating, setIsCreating] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [step, setStep] = useState(1);
   const [searchQuery, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<ReservationStatus | 'all'>('all');
+  
+  // Load reservations from Supabase on mount
+  useEffect(() => {
+    const loadReservations = async () => {
+      try {
+        const data = await dataService.getReservations();
+        setReservations(data);
+      } catch (err) {
+        console.error('Failed to load reservations:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadReservations();
+  }, []);
+  
+  // Add state for agencies and vehicles
+  const [agencies, setAgencies] = useState<any[]>([
+    { id: '1', name: 'Branch 1' },
+    { id: '2', name: 'Branch 2' },
+    { id: '3', name: 'Branch 3' }
+  ]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  
+  // Load agencies and vehicles
+  useEffect(() => {
+    const loadAgenciesAndVehicles = async () => {
+      try {
+        const [agenciesData, vehiclesData] = await Promise.all([
+          dataService.getAgencies().catch(() => agencies),
+          dataService.getVehicles()
+        ]);
+        if (agenciesData) setAgencies(agenciesData);
+        if (vehiclesData) setVehicles(vehiclesData);
+      } catch (err) {
+        console.error('Failed to load agencies/vehicles:', err);
+      }
+    };
+    loadAgenciesAndVehicles();
+  }, []);
   
   // Modal & Edit State
   const [activeModal, setActiveModal] = useState<ActionModal>(null);
@@ -153,7 +195,7 @@ const PlannerPage: React.FC<PlannerPageProps> = ({ lang, customers, onAddCustome
   ];
 
   // Helpers
-  const getVehicle = (id: string) => MOCK_VEHICLES.find(v => v.id === id);
+  const getVehicle = (id: string) => vehicles.find(v => v.id === id);
   const getCustomer = (id: string) => customers.find(c => c.id === id);
   
   const calculateDays = (start: string, end: string) => {
@@ -334,7 +376,7 @@ const PlannerPage: React.FC<PlannerPageProps> = ({ lang, customers, onAddCustome
                       </div>
                       <select value={formData.pickupAgencyId || ''} onChange={e => setFormData({...formData, pickupAgencyId: e.target.value})} className="w-full px-6 py-4 rounded-2xl font-bold bg-white shadow-sm outline-none appearance-none cursor-pointer">
                         <option value="">Sélectionner une agence</option>
-                        {MOCK_AGENCIES.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                        {agencies.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                       </select>
                    </div>
                    <div className="p-10 bg-indigo-50/50 rounded-[3.5rem] border border-indigo-100 space-y-8 shadow-inner">
@@ -352,7 +394,7 @@ const PlannerPage: React.FC<PlannerPageProps> = ({ lang, customers, onAddCustome
                       {formData.differentReturn && (
                         <select value={formData.returnAgencyId || ''} onChange={e => setFormData({...formData, returnAgencyId: e.target.value})} className="w-full px-6 py-4 rounded-2xl font-bold bg-white shadow-sm outline-none appearance-none cursor-pointer">
                           <option value="">Sélectionner une agence de retour</option>
-                          {MOCK_AGENCIES.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                          {agencies.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                         </select>
                       )}
                    </div>
@@ -361,7 +403,7 @@ const PlannerPage: React.FC<PlannerPageProps> = ({ lang, customers, onAddCustome
 
              {step === 2 && (
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-fade-in max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                  {MOCK_VEHICLES.map(v => (
+                  {vehicles.map(v => (
                     <button key={v.id} onClick={() => setFormData({...formData, vehicleId: v.id})} className={`group p-8 rounded-[3.5rem] border-4 transition-all text-left relative overflow-hidden ${formData.vehicleId === v.id ? 'border-blue-600 bg-blue-50 shadow-2xl scale-105' : 'border-gray-50 bg-gray-50/50 hover:border-blue-200'}`}>
                        <div className="relative h-40 rounded-[2rem] overflow-hidden mb-6 shadow-xl">
                           <img src={v.mainImage} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
@@ -623,10 +665,10 @@ const PlannerPage: React.FC<PlannerPageProps> = ({ lang, customers, onAddCustome
                        </div>
                        <div className="flex gap-4">
                           {res.status === 'confermer' && (
-                            <button onClick={() => { setSelectedRes(res); setLogData({ mileage: v?.mileage, fuel: 'plein', location: MOCK_AGENCIES.find(a => a.id === res.pickupAgencyId)?.id || '' }); setActiveModal('activate'); }} className="flex-1 py-6 bg-green-600 text-white rounded-[2.5rem] font-black uppercase text-xs tracking-widest shadow-2xl hover:scale-105 transition-all">🏁 {t.labels.activate}</button>
+                            <button onClick={() => { setSelectedRes(res); setLogData({ mileage: v?.mileage, fuel: 'plein', location: agencies.find(a => a.id === res.pickupAgencyId)?.id || '' }); setActiveModal('activate'); }} className="flex-1 py-6 bg-green-600 text-white rounded-[2.5rem] font-black uppercase text-xs tracking-widest shadow-2xl hover:scale-105 transition-all">🏁 {t.labels.activate}</button>
                           )}
                           {res.status === 'en cours' && (
-                            <button onClick={() => { setSelectedRes(res); setTermData({...termData, mileage: (res.activationLog?.mileage || 0) + 100, location: MOCK_AGENCIES.find(a => a.id === res.returnAgencyId)?.id || ''}); setActiveModal('terminate'); }} className="flex-1 py-6 bg-orange-600 text-white rounded-[2.5rem] font-black uppercase text-xs tracking-widest shadow-2xl hover:scale-105 transition-all">🔒 Terminer Location</button>
+                            <button onClick={() => { setSelectedRes(res); setTermData({...termData, mileage: (res.activationLog?.mileage || 0) + 100, location: agencies.find(a => a.id === res.returnAgencyId)?.id || ''}); setActiveModal('terminate'); }} className="flex-1 py-6 bg-orange-600 text-white rounded-[2.5rem] font-black uppercase text-xs tracking-widest shadow-2xl hover:scale-105 transition-all">🔒 Terminer Location</button>
                           )}
                           <button onClick={() => { setSelectedRes(res); setActiveModal('template-select'); }} className="flex-1 py-6 bg-gray-900 text-white rounded-[2.5rem] font-black uppercase text-xs tracking-widest shadow-2xl hover:bg-black transition-all">🖨️ {res.status === 'en cours' || res.status === 'terminer' ? 'Contrat' : 'Devis'}</button>
                        </div>
@@ -708,7 +750,7 @@ const PlannerPage: React.FC<PlannerPageProps> = ({ lang, customers, onAddCustome
                  <div>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 px-4">Lieu de prise en charge</label>
                     <select value={logData.location} onChange={e => setLogData({...logData, location: e.target.value})} className="w-full px-6 py-5 bg-gray-50 rounded-2xl font-bold outline-none shadow-inner appearance-none cursor-pointer">
-                        {MOCK_AGENCIES.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                        {agencies.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                     </select>
                  </div>
               </div>
@@ -750,7 +792,7 @@ const PlannerPage: React.FC<PlannerPageProps> = ({ lang, customers, onAddCustome
                     <div className="space-y-4">
                        <label className="text-[10px] font-black text-gray-400 uppercase px-4 tracking-widest">Lieu de retour</label>
                        <select value={termData.location} onChange={e => setTermData({...termData, location: e.target.value})} className="w-full px-6 py-5 bg-gray-50 rounded-2xl font-bold outline-none shadow-inner appearance-none cursor-pointer">
-                          {MOCK_AGENCIES.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                          {agencies.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                        </select>
                     </div>
                     <div className="space-y-4">

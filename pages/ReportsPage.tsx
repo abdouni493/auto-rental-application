@@ -1,8 +1,9 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Language, Reservation, Vehicle, Customer, Worker, Expense, Maintenance, Inspection, Damage, Agency } from '../types';
 import { TRANSLATIONS } from '../constants';
 import GradientButton from '../components/GradientButton';
+import * as dataService from '../services/dataService';
 
 interface ReportsPageProps {
   lang: Language;
@@ -58,48 +59,66 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ lang }) => {
     }
   }[lang];
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     setIsGenerating(true);
-    // Simulate complex data crunching
-    setTimeout(() => {
+    try {
       const sDate = new Date(startDate);
       const eDate = new Date(endDate);
 
-      const filteredRes = MOCK_RESERVATIONS.filter(r => {
+      // Fetch real data from Supabase
+      const [reservations, expenses, maintenances, inspections, damages, workers, agencies] = await Promise.all([
+        dataService.getReservations(),
+        dataService.getExpenses(),
+        dataService.getMaintenances(),
+        dataService.getInspections(),
+        dataService.getDamages().catch(() => []),
+        dataService.getWorkers(),
+        dataService.getAgencies()
+      ]);
+
+      // Filter by date
+      const filteredRes = reservations.filter(r => {
         const d = new Date(r.startDate);
         return d >= sDate && d <= eDate;
       });
 
-      const filteredExp = MOCK_EXPENSES.filter(e => {
+      const filteredExp = expenses.filter(e => {
         const d = new Date(e.date);
         return d >= sDate && d <= eDate;
       });
 
-      const filteredMaint = MOCK_MAINTENANCE.filter(m => {
+      const filteredMaint = maintenances.filter(m => {
         const d = new Date(m.date);
         return d >= sDate && d <= eDate;
       });
 
-      const filteredInsp = MOCK_INSPECTIONS.filter(i => {
+      const filteredInsp = inspections.filter(i => {
         const d = new Date(i.date);
         return d >= sDate && d <= eDate;
       });
 
-      const totalGains = filteredRes.reduce((acc, r) => acc + r.paidAmount, 0);
-      const totalExpenses = filteredExp.reduce((acc, e) => acc + e.cost, 0) + 
-                            filteredMaint.reduce((acc, m) => acc + m.cost, 0);
+      const totalGains = filteredRes.reduce((acc, r) => acc + (r.totalAmount || 0), 0);
+      const totalExpenses = filteredExp.reduce((acc, e) => acc + (e.amount || 0), 0) + 
+                            filteredMaint.reduce((acc, m) => acc + (m.cost || 0), 0);
 
       setReportData({
         reservations: filteredRes,
         expenses: filteredExp,
         maintenances: filteredMaint,
         inspections: filteredInsp,
+        damages: damages,
+        workers: workers,
+        agencies: agencies,
         gains: totalGains,
         costs: totalExpenses,
         profit: totalGains - totalExpenses
       });
+    } catch (err) {
+      console.error('Error generating report:', err);
+      alert(lang === 'fr' ? 'Erreur lors de la génération du rapport' : 'خطأ في توليد التقرير');
+    } finally {
       setIsGenerating(false);
-    }, 1000);
+    }
   };
 
   // Fixed: SectionTitle now explicitly uses PropsWithChildren to ensure 'children' is recognized by TypeScript.
@@ -168,20 +187,19 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ lang }) => {
                 <SectionTitle icon="📅">{t.planner}</SectionTitle>
                 <div className="space-y-6">
                    {reportData.reservations.map((res: Reservation) => {
-                     const client = MOCK_CUSTOMERS.find(c => c.id === res.customerId);
-                     // Fixed: MOCK_VE_HICLES corrected to MOCK_VEHICLES
-                     const veh = MOCK_VEHICLES.find(v => v.id === res.vehicleId);
+                     const clientName = res.customerName || 'Cliente';
+                     const vehicleInfo = res.vehicleBrand ? `${res.vehicleBrand} ${res.vehicleModel}` : 'Vehicle';
                      return (
                        <div key={res.id} className="flex items-center justify-between p-6 bg-gray-50 rounded-[2.5rem] border border-gray-100 hover:bg-white hover:shadow-xl transition-all">
                           <div className="flex items-center gap-6">
-                             <img src={client?.profilePicture} className="w-12 h-12 rounded-full border-2 border-white shadow-sm" />
+                             <div className="w-12 h-12 rounded-full border-2 border-white shadow-sm flex items-center justify-center bg-blue-100 text-blue-600">👤</div>
                              <div>
-                               <p className="font-black text-gray-900">{client?.firstName} {client?.lastName}</p>
-                               <p className="text-[10px] font-bold text-gray-400 uppercase">{veh?.brand} {veh?.model} • #{res.reservationNumber}</p>
+                               <p className="font-black text-gray-900">{clientName}</p>
+                               <p className="text-[10px] font-bold text-gray-400 uppercase">{vehicleInfo} • #{res.reservationNumber}</p>
                              </div>
                           </div>
                           <div className="text-right">
-                             <p className="font-black text-blue-600">{res.totalAmount.toLocaleString()} DZ</p>
+                             <p className="font-black text-blue-600">{res.totalAmount?.toLocaleString()} DZ</p>
                              <span className="text-[9px] font-black uppercase text-gray-400">{new Date(res.startDate).toLocaleDateString()}</span>
                           </div>
                        </div>
@@ -204,11 +222,11 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ lang }) => {
                         <p className="text-[10px] font-bold text-blue-600 mt-2">⛽ Carburant : {insp.fuel}</p>
                      </div>
                    ))}
-                   {MOCK_DAMAGES.slice(0, 2).map((dmg: Damage) => (
+                   {reportData.damages && reportData.damages.slice(0, 2).map((dmg: Damage) => (
                      <div key={dmg.id} className="p-6 bg-red-50 rounded-[2.5rem] border-l-8 border-red-600">
                         <p className="font-black text-red-600 uppercase text-xs mb-1">Dégât Signalé: {dmg.name}</p>
                         <p className="text-[10px] font-bold text-gray-500">{dmg.description}</p>
-                        <p className="text-xs font-black text-gray-900 mt-2">Coût estimé : {dmg.costs.toLocaleString()} DZ</p>
+                        <p className="text-xs font-black text-gray-900 mt-2">Coût estimé : {(dmg.estimatedCost || 0).toLocaleString()} DZ</p>
                      </div>
                    ))}
                 </div>
@@ -218,15 +236,15 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ lang }) => {
              <div className="bg-white p-12 rounded-[4rem] shadow-sm border border-gray-100">
                 <SectionTitle icon="🤝">{t.hr}</SectionTitle>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                   {MOCK_WORKERS.map((worker: Worker) => (
+                   {reportData.workers && reportData.workers.map((worker: Worker) => (
                      <div key={worker.id} className="p-8 bg-gray-50 rounded-[3rem] border border-gray-100 flex items-center gap-6">
-                        <img src={worker.photo} className="w-16 h-16 rounded-2xl object-cover shadow-lg border-4 border-white" />
+                        <div className="w-16 h-16 rounded-2xl object-cover shadow-lg border-4 border-white bg-blue-100 flex items-center justify-center text-2xl">👤</div>
                         <div>
                            <h4 className="font-black text-gray-900 leading-none mb-1">{worker.fullName}</h4>
                            <p className="text-[10px] font-bold text-blue-600 uppercase mb-3 tracking-widest">{worker.role}</p>
                            <div className="space-y-1">
-                              <p className="text-[9px] font-bold text-gray-400 uppercase">Salaire: {worker.amount.toLocaleString()} DZ</p>
-                              <p className="text-[9px] font-bold text-red-500 uppercase">Absences: {worker.absences} Jours</p>
+                              <p className="text-[9px] font-bold text-gray-400 uppercase">Salaire: {(worker.amount || 0).toLocaleString()} DZ</p>
+                              <p className="text-[9px] font-bold text-red-500 uppercase">Absences: {worker.absences || 0} Jours</p>
                            </div>
                         </div>
                      </div>
@@ -260,10 +278,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ lang }) => {
                    <div>
                       <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 border-b pb-2">Réseau d'Agences</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                         {MOCK_AGENCIES.map(a => (
+                         {reportData.agencies && reportData.agencies.map(a => (
                            <div key={a.id} className="p-6 bg-gray-50 rounded-[2.5rem] border border-gray-100">
                               <p className="font-black text-gray-900 leading-none mb-1">{a.name}</p>
-                              <p className="text-[9px] font-bold text-gray-400">{a.address}</p>
+                              <p className="text-[9px] font-bold text-gray-400">{a.address || 'Branch'}</p>
                            </div>
                          ))}
                       </div>

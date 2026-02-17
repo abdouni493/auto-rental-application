@@ -330,11 +330,13 @@ const VehiclesPage: React.FC<VehiclesPageProps> = ({ lang, initialVehicles, onUp
               </div>
             ) : (
               vehicleRentals.slice().reverse().map((res, i) => {
-                const client = MOCK_CUSTOMERS.find(c => c.id === res.customerId);
+                const client = vehicles[0]?.currentRentals?.find(r => r.id === res.customerId) ? 
+                  { id: res.customerId, firstName: 'Cliente', lastName: res.customerId, profilePicture: '👤' } : 
+                  { id: res.customerId, firstName: 'Cliente', lastName: res.customerId, profilePicture: '👤' };
                 return (
                   <div key={i} className="group flex items-center justify-between p-7 bg-gray-50 rounded-[2.5rem] border border-transparent hover:border-blue-400 transition-all hover:bg-white hover:shadow-xl">
                     <div className="flex items-center gap-6">
-                      <img src={client?.profilePicture} className="w-16 h-16 rounded-full bg-white object-cover border-4 border-white shadow-md group-hover:scale-110 transition-transform" />
+                      <img src={typeof client?.profilePicture === 'string' && client.profilePicture.startsWith('http') ? client?.profilePicture : '👤'} className="w-16 h-16 rounded-full bg-white object-cover border-4 border-white shadow-md group-hover:scale-110 transition-transform" alt={client?.firstName} />
                       <div>
                         <p className="font-black text-gray-900 text-xl group-hover:text-blue-600 transition-colors">{client?.firstName} {client?.lastName}</p>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
@@ -470,7 +472,9 @@ const VehiclesPage: React.FC<VehiclesPageProps> = ({ lang, initialVehicles, onUp
                       <div>
                         <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 px-2">{currentT.location}</label>
                         <select defaultValue={editingVehicle?.currentLocation} className="w-full px-8 py-5 bg-gray-50 rounded-3xl outline-none font-black text-lg appearance-none cursor-pointer border-2 border-transparent focus:bg-white focus:border-blue-500 shadow-inner">
-                           {MOCK_AGENCIES.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
+                           <option value="Branch 1">Branch 1</option>
+                           <option value="Branch 2">Branch 2</option>
+                           <option value="Branch 3">Branch 3</option>
                         </select>
                       </div>
                       <div>

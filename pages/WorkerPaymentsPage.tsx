@@ -1,8 +1,9 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Language, User, Worker } from '../types';
 import { TRANSLATIONS } from '../constants';
 import GradientButton from '../components/GradientButton';
+import * as dataService from '../services/dataService';
 
 interface WorkerPaymentsPageProps {
   lang: Language;
@@ -11,15 +12,30 @@ interface WorkerPaymentsPageProps {
 
 const WorkerPaymentsPage: React.FC<WorkerPaymentsPageProps> = ({ lang, user }) => {
   const isRtl = lang === 'ar';
+  const [workerData, setWorkerData] = useState<Worker | null>(null);
+  const [loading, setLoading] = useState(true);
   
-  // Find the logged-in worker in mock data
-  const workerData = useMemo(() => {
-    return MOCK_WORKERS.find(w => w.username === user.username) || MOCK_WORKERS[0];
+  // Fetch logged-in worker from Supabase
+  useEffect(() => {
+    const fetchWorker = async () => {
+      try {
+        const workers = await dataService.getWorkers();
+        const loggedInWorker = workers.find(w => w.username === user.username);
+        setWorkerData(loggedInWorker || null);
+      } catch (error) {
+        console.error('Failed to fetch worker data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchWorker();
   }, [user.username]);
 
   const stats = useMemo(() => {
-    const advances = workerData.history.filter(t => t.type === 'advance').reduce((acc, t) => acc + t.amount, 0);
-    const absencesCost = workerData.absences * (workerData.paymentType === 'day' ? workerData.amount : (workerData.amount / 30));
+    if (!workerData) return { advances: 0, absencesCost: 0, netSalary: 0 };
+    
+    const advances = (workerData.history || []).filter(t => t.type === 'advance').reduce((acc, t) => acc + t.amount, 0);
+    const absencesCost = (workerData.absences || 0) * (workerData.paymentType === 'day' ? workerData.amount : (workerData.amount / 30));
     
     return {
       advances,
@@ -67,6 +83,22 @@ const WorkerPaymentsPage: React.FC<WorkerPaymentsPageProps> = ({ lang, user }) =
 
   return (
     <div className={`p-4 md:p-12 animate-fade-in ${isRtl ? 'font-arabic text-right' : ''}`}>
+      {loading ? (
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-400 font-bold">Chargement...</p>
+          </div>
+        </div>
+      ) : !workerData ? (
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <p className="text-2xl font-black text-gray-400 mb-4">❌ Données d'employé non trouvées</p>
+            <p className="text-gray-500">Veuillez contacter l'administrateur</p>
+          </div>
+        </div>
+      ) : (
+        <>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-10 mb-16">
         <div>
           <h1 className="text-6xl font-black text-gray-900 tracking-tighter mb-4">{t.title}</h1>
@@ -147,6 +179,8 @@ const WorkerPaymentsPage: React.FC<WorkerPaymentsPageProps> = ({ lang, user }) =
             </table>
          </div>
       </div>
+        </>
+      )}
     </div>
   );
 };
