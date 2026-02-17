@@ -19,19 +19,25 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ lang, onNavigate, user })
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [workers, setWorkers] = useState<Worker[]>([]);
+  const [agencies, setAgencies] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
 
   // Load real data on mount
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [resData, vehiclesData, workersData] = await Promise.all([
+        const [resData, vehiclesData, workersData, agenciesData, customersData] = await Promise.all([
           dataService.getReservations(),
           dataService.getVehicles(),
-          dataService.getWorkers()
+          dataService.getWorkers(),
+          dataService.getAgencies(),
+          dataService.getCustomers()
         ]);
         setReservations(resData);
         setVehicles(vehiclesData);
         setWorkers(workersData);
+        setAgencies(agenciesData);
+        setCustomers(customersData);
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
       }
