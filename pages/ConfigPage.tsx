@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Language } from '../types';
 import GradientButton from '../components/GradientButton';
+import * as dataService from '../services/dataService';
 
 interface ConfigPageProps {
   lang: Language;
@@ -9,34 +10,71 @@ interface ConfigPageProps {
 
 type ConfigTab = 'general' | 'rules' | 'security' | 'database';
 
+interface ConfigSettings {
+  storeName: string;
+  slogan: string;
+  address: string;
+  facebook: string;
+  instagram: string;
+  whatsapp: string;
+  penaltyCalcType: string;
+  penaltyAmount: number;
+  penaltyTolerance: number;
+  fuelMissingPrice: number;
+  dailyLimit: number;
+  toleranceKM: number;
+  excessPrice: number;
+  unlimitedPrice: number;
+  username: string;
+  email: string;
+}
+
+const DEFAULT_CONFIG: ConfigSettings = {
+  storeName: 'DriveFlow Management',
+  slogan: "L'élégance au service de votre mobilité",
+  address: '12 Rue Didouche Mourad, Alger Centre',
+  facebook: 'facebook.com/driveflow',
+  instagram: 'instagram.com/driveflow_dz',
+  whatsapp: '+213 550 00 00 00',
+  penaltyCalcType: 'daily',
+  penaltyAmount: 1500,
+  penaltyTolerance: 60,
+  fuelMissingPrice: 500,
+  dailyLimit: 250,
+  toleranceKM: 20,
+  excessPrice: 15,
+  unlimitedPrice: 2000,
+  username: 'admin',
+  email: 'contact@driveflow.dz'
+};
+
 const ConfigPage: React.FC<ConfigPageProps> = ({ lang }) => {
   const [activeTab, setActiveTab] = useState<ConfigTab>('general');
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   
-  // Centralized configuration state to prevent data loss on tab switch
-  const [configData, setConfigData] = useState({
-    storeName: 'DriveFlow Management',
-    slogan: "L'élégance au service de votre mobilité",
-    address: '12 Rue Didouche Mourad, Alger Centre',
-    facebook: 'facebook.com/driveflow',
-    instagram: 'instagram.com/driveflow_dz',
-    whatsapp: '+213 550 00 00 00',
-    penaltyCalcType: 'daily',
-    penaltyAmount: 1500,
-    penaltyTolerance: 60,
-    fuelMissingPrice: 500,
-    dailyLimit: 250,
-    toleranceKM: 20,
-    excessPrice: 15,
-    unlimitedPrice: 2000,
-    username: 'admin',
-    email: 'contact@driveflow.dz',
-    newPassword: '',
-    confirmPassword: ''
+  // Load config from localStorage on mount
+  const [configData, setConfigData] = useState<ConfigSettings>(() => {
+    const saved = localStorage.getItem('appConfig');
+    return saved ? JSON.parse(saved) : DEFAULT_CONFIG;
   });
 
   const isRtl = lang === 'ar';
+
+  // Save config to localStorage whenever it changes (but debounced)
+  const saveTimeoutRef = useRef<NodeJS.Timeout>();
+  useEffect(() => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      localStorage.setItem('appConfig', JSON.stringify(configData));
+    }, 500);
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [configData]);
 
   const t = {
     fr: {
@@ -170,17 +208,44 @@ const ConfigPage: React.FC<ConfigPageProps> = ({ lang }) => {
     setConfigData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
-    setIsSaving(true);
-    setSaveSuccess(false);
-    
-    // Simulate API delay
-    setTimeout(() => {
+  const handleSave = async () => {
+    try {
+      setSaveError(null);
+      setSaveSuccess(false);
+      setIsSaving(true);
+
+      // Validate passwords match if changing password
+      if (newPassword || confirmPassword) {
+        if (newPassword !== confirmPassword) {
+          setSaveError(lang === 'fr' ? 'Les mots de passe ne correspondent pas' : 'كلمات المرور غير متطابقة');
+          setIsSaving(false);
+          return;
+        }
+        if (newPassword.length < 6) {
+          setSaveError(lang === 'fr' ? 'Le mot de passe doit contenir au moins 6 caractères' : 'يجب أن تكون كلمة المرور من 6 أحرف على الأقل');
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      // Save to localStorage (auto-saved already, but explicit save here)
+      localStorage.setItem('appConfig', JSON.stringify(configData));
+
+      // Optional: Sync to Supabase if you add a settings table later
+      // await dataService.updateSettings(configData);
+
       setIsSaving(false);
       setSaveSuccess(true);
+      setNewPassword('');
+      setConfirmPassword('');
+      
       // Auto-hide success message after 3 seconds
       setTimeout(() => setSaveSuccess(false), 3000);
-    }, 1200);
+    } catch (error) {
+      console.error('Error saving config:', error);
+      setSaveError(lang === 'fr' ? 'Erreur lors de l\'enregistrement' : 'خطأ في الحفظ');
+      setIsSaving(false);
+    }
   };
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -525,6 +525,59 @@ export const updateDamage = async (id: string, updates: Partial<Damage>): Promis
 };
 
 // =====================================================
+// MAINTENANCES OPERATIONS
+// =====================================================
+
+export const getMaintenances = async (): Promise<Maintenance[]> => {
+  const { data, error } = await supabase
+    .from('maintenances')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ? data.map(formatMaintenance) : [];
+};
+
+export const createMaintenance = async (maintenance: Omit<Maintenance, 'id'>): Promise<Maintenance> => {
+  const { data, error } = await supabase
+    .from('maintenances')
+    .insert([{
+      vehicle_id: maintenance.vehicleId,
+      type: maintenance.type,
+      maintenance_date: maintenance.date,
+      cost: maintenance.cost,
+      description: maintenance.description,
+      status: maintenance.status,
+      notes: maintenance.notes
+    }])
+    .select()
+    .single();
+  if (error) throw error;
+  return formatMaintenance(data);
+};
+
+export const updateMaintenance = async (id: string, updates: Partial<Maintenance>): Promise<Maintenance> => {
+  const updateData: any = {};
+  
+  if (updates.status) updateData.status = updates.status;
+  if (updates.cost) updateData.cost = updates.cost;
+  if (updates.notes) updateData.notes = updates.notes;
+
+  const { data, error } = await supabase
+    .from('maintenances')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return formatMaintenance(data);
+};
+
+export const deleteMaintenance = async (id: string): Promise<void> => {
+  const { error } = await supabase.from('maintenances').delete().eq('id', id);
+  if (error) throw error;
+};
+
+// =====================================================
 // FORMATTER FUNCTIONS (Convert snake_case to camelCase)
 // =====================================================
 
@@ -698,5 +751,18 @@ function formatDamage(data: any): Damage {
     status: data.status,
     repairDate: data.repair_date,
     photos: data.photos || []
+  };
+}
+
+function formatMaintenance(data: any): Maintenance {
+  return {
+    id: data.id,
+    vehicleId: data.vehicle_id,
+    type: data.type,
+    date: data.maintenance_date,
+    cost: data.cost,
+    description: data.description,
+    status: data.status,
+    notes: data.notes
   };
 }
